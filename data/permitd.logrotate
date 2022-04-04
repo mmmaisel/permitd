@@ -1,0 +1,10 @@
+/var/log/permitd.log {
+  su root adm
+  rotate 12
+  daily
+  compress
+  missingok
+  notifempty
+  nocreate
+  sharedscripts
+}

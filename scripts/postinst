@@ -1,0 +1,5 @@
+#!/bin/sh
+
+deb-systemd-helper restart logrotate.service >/dev/null || true
+
+#DEBHELPER#

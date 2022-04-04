@@ -1,0 +1,17 @@
+[Unit]
+Description=enforces permissions on directory tree
+After=multi-user.target network-online.target
+
+[Service]
+Type=forking
+User=root
+RuntimeDirectory=permitd
+RuntimeDirectoryMode=0750
+PIDFile=/var/run/permitd/pid
+WorkingDirectory=/
+ExecStart=/bin/permitd
+ExecStop=/bin/kill -s TERM $MAINPID
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

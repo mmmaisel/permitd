@@ -1,0 +1,38 @@
+[package]
+name = "permitd"
+version = "0.1.0"
+license = "AGPL-3.0-or-later"
+description = "enforces permissions on directory tree"
+authors = ["Max Maisel <max.maisel@posteo.de>"]
+readme = "README.md"
+edition = "2021"
+rust-version = "1.59.0"
+
+[package.metadata.deb]
+assets = [
+    ["target/release/permitd", "bin/", "755"],
+    ["data/permitd.conf", "etc/permitd/", "600"],
+    ["data/permitd.logrotate", "etc/logrotate.d/permitd", "644"],
+]
+conf-files = [
+    "etc/permitd/permitd.conf",
+    "etc/logrotate.d/permitd"
+]
+changelog = "ChangeLog"
+maintainer-scripts = "scripts/"
+
+[package.metadata.deb.systemd-units]
+
+[dependencies]
+clap = { version=">=3.1.5", features=["derive"] }
+daemonize = ">=0.4.1"
+exacl = ">=0.8"
+futures-util = "*"
+inotify = ">=0.10"
+nix = ">=0.23.1"
+serde = { version = ">=1.0", features=["derive"] }
+slog = { version=">=2.7", features=["max_level_trace", "release_max_level_debug"] }
+sloggers = { version=">=1.0", default_features=false }
+tokio = { version = ">=1.0", features=["rt", "rt-multi-thread"] }
+toml = ">=0.3.21"
+users = ">=0.11"
