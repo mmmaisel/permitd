@@ -297,13 +297,17 @@ fn apply_tree_permissions(
     for entry in read_dir(dir).map_err(|e| {
         format!("Read directory '{}' failed: {}", &dir.display(), e)
     })? {
-        let dir = entry
+        let path = entry
             .map_err(|e| format!("Read directory entry failed: {}", e))?
             .path();
-        permission.apply(dir.as_os_str())?;
 
-        if dir.is_dir() {
-            apply_tree_permissions(permissions, &dir)?;
+        if path.is_symlink() {
+            continue;
+        }
+
+        permission.apply(path.as_os_str())?;
+        if path.is_dir() {
+            apply_tree_permissions(permissions, &path)?;
         }
     }
     Ok(())
@@ -462,6 +466,12 @@ async fn tokio_main(settings: Settings, logger: Logger) -> i32 {
                 trace!(logger, "Ignoring event for {:?} once", &path);
                 continue;
             }
+
+            if Path::new(&path).is_symlink() {
+                trace!(logger, "Skipping symlink: {:?}", &path);
+                continue;
+            }
+
             trace!(logger, "Setting permissions on '{:?}'", &path);
             let permission = match permissions.longest_match(&path) {
                 Ok(x) => x,
