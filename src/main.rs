@@ -21,7 +21,7 @@ use clap::Parser;
 use daemonize::Daemonize;
 use exacl::{setfacl, AclEntry, Perm};
 use futures_util::StreamExt;
-use inotify::{Event, EventMask, Inotify, WatchDescriptor, WatchMask};
+use inotify::{Event, EventMask, Inotify, WatchDescriptor, WatchMask, Watches};
 use nix::unistd::{chown, Gid, Uid};
 use serde::Deserialize;
 use slog::{debug, error, info, trace, warn, Logger};
@@ -241,7 +241,10 @@ impl TreeWatcher {
             return Err(format!("{} is not a directory", dir.display()));
         }
 
-        self.add_watch(inotify, dir.to_path_buf().into_os_string())?;
+        self.add_watch(
+            &mut inotify.watches(),
+            dir.to_path_buf().into_os_string(),
+        )?;
         for entry in read_dir(dir).map_err(|e| {
             format!("Read directory '{}' failed: {}", &dir.display(), e)
         })? {
@@ -249,7 +252,10 @@ impl TreeWatcher {
                 .map_err(|e| format!("Read directory entry failed: {}", e))?
                 .path();
             if dir.is_dir() {
-                self.add_watch(inotify, dir.to_path_buf().into_os_string())?;
+                self.add_watch(
+                    &mut inotify.watches(),
+                    dir.to_path_buf().into_os_string(),
+                )?;
                 self.add_directory_tree(inotify, &dir)?;
             }
         }
@@ -258,10 +264,10 @@ impl TreeWatcher {
 
     pub fn add_watch(
         &mut self,
-        inotify: &mut Inotify,
+        watches: &mut Watches,
         path: OsString,
     ) -> Result<(), String> {
-        match inotify.add_watch(&path, Self::WATCH_MASK) {
+        match watches.add(&path, Self::WATCH_MASK) {
             Ok(x) => {
                 self.0.insert(x, path);
                 Ok(())
@@ -418,7 +424,7 @@ async fn tokio_main(settings: Settings, logger: Logger) -> i32 {
     }
 
     let mut buffer = [0; 16 * 1024];
-    let mut stream = match inotify.event_stream(&mut buffer) {
+    let mut stream = match inotify.into_event_stream(&mut buffer) {
         Ok(x) => x,
         Err(e) => {
             error!(logger, "Streaming events failed: {}", e);
@@ -453,7 +459,7 @@ async fn tokio_main(settings: Settings, logger: Logger) -> i32 {
 
         if event.mask.contains(EventMask::ISDIR | EventMask::CREATE) {
             trace!(logger, "watching {:?}", &path);
-            if let Err(e) = watcher.add_watch(&mut inotify, path) {
+            if let Err(e) = watcher.add_watch(&mut stream.watches(), path) {
                 error!(logger, "{}", e)
             }
         } else if event.mask.contains(EventMask::DELETE_SELF) {
