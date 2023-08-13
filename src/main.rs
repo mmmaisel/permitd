@@ -292,6 +292,7 @@ impl TreeWatcher {
 }
 
 fn apply_tree_permissions(
+    logger: &Logger,
     permissions: &PermissionMap,
     dir: &Path,
 ) -> Result<(), String> {
@@ -308,12 +309,13 @@ fn apply_tree_permissions(
             .path();
 
         if path.is_symlink() {
+            debug!(logger, "Skipping symlink: {:?}", path);
             continue;
         }
 
         permission.apply(path.as_os_str())?;
         if path.is_dir() {
-            apply_tree_permissions(permissions, &path)?;
+            apply_tree_permissions(logger, permissions, &path)?;
         }
     }
     Ok(())
@@ -389,7 +391,7 @@ async fn tokio_main(settings: Settings, logger: Logger) -> i32 {
     info!(logger, "Applying initial permissions");
     for dir in &settings.directories {
         if let Err(e) =
-            apply_tree_permissions(&permissions, Path::new(&dir.path))
+            apply_tree_permissions(&logger, &permissions, Path::new(&dir.path))
         {
             error!(
                 logger,
